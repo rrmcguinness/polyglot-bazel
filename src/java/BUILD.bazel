@@ -1,0 +1,25 @@
+## Java Targets
+load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library", "java_proto_library")
+load("@rules_proto_grpc//java:defs.bzl", "java_grpc_compile")
+
+package(default_visibility = [
+    "//src/java:__subpackages__",
+])
+
+java_proto_library(
+    name = "java_proto",
+    importpath = "example.pb",
+    protos = [
+        "//api:model",
+    ],
+)
+
+java_grpc_library(
+    name = "java_grpc",
+    importpath = "example.grpc",
+    protos = ["//api:service"],
+    deps = [
+        ":java_proto",
+        "@maven//:com_google_api_grpc_proto_google_common_protos",
+    ],
+)

@@ -3,6 +3,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:prefix github.com/example/project
 gazelle(name = "gazelle")
 
+# Use this target to auto generate build files.
 gazelle(
     name = "gazelle-update-repos",
     args = [

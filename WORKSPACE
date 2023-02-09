@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO - Rename Project
 workspace(name = "project_name")
 
 ###############################################################################
@@ -32,6 +33,7 @@ RULES_JVM_EXTERNAL_SHA = "b17d7388feb9bfa7f2fa09031b32707df529f26c91ab9e5d909eb1
 # The maven dependencies of the project, this DOES NOT include the JUNIT 5
 # dependencies, please see the //build/junit.bzl file.
 PROJECT_MAVEN_DEPENDENCIES = [
+    "commons-logging:commons-logging:1.2",
     "org.apache.commons:commons-lang3:3.12.0",
     "com.google.protobuf:protobuf-java-util:3.21.7",
     "io.grpc:grpc-core:1.49.2",
