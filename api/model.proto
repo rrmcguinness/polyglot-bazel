@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package example.pb;
+
+option go_package = "example/pb";
+
+option java_package = "example.pb";
+
+import "google/protobuf/timestamp.proto";
+
+message AuditRecord {
+  // A UUID for the unique event
+  string id = 1 [json_name = 'id'];
+  // The date the version was created
+  google.protobuf.Timestamp created = 2 [json_name = 'cr_dt'];
+  // The type of action that was executed, example: CREATE, READ, UPDATE, DELETE
+  string action = 3 [json_name = 'action'];
+  // The context of the action, <RECORD_TYPE>, <SERVICE_CALL_TYPE>,
+  string context = 4 [json_name = 'ctx'];
+  // The executor of the action, LDAP ID, Token ID, etc.
+  string principal = 5 [json_name = 'principal'];
+  // The origin of the action, request host, system_id, etc.
+  map<string, string> context_variables = 6 [json_name = 'ctx_vars'];
+}
+
+message AuditResponse {
+  string audit_record_id = 1 [json_name = 'id'];
+  string transaction_id = 2 [json_name = 'tx_id'];
+}
+

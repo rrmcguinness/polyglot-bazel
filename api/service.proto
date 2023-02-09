@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package example.grpc;
+
+option go_package = "example/grpc";
+
+option java_package = "example.grpc";
+
+import "google/api/annotations.proto";
+
+import "api/model.proto";
+
+service Audit {
+  rpc Create(stream example.pb.AuditRecord)
+    returns (stream example.pb.AuditResponse) {
+    option (google.api.http) = {
+      post: '/audit'
+      body: 'audit_record'
+    };
+  }
+}
