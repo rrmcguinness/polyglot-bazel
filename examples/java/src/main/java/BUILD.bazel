@@ -1,7 +1,3 @@
-package(
-    default_visibility = ["//src/java:__subpackages__"],
-)
-
 java_binary(
     name = "service",
     srcs = glob([
@@ -9,10 +5,11 @@ java_binary(
         "example/service/*.java",
     ]),
     deps = [
-        "//src/java:java_grpc",
-        "//src/java:java_proto",
+        "//examples/java:java_grpc",
+        "//examples/java:java_proto",
         "@maven//:commons_logging_commons_logging",
         "@maven//:org_apache_logging_log4j_log4j_api",
         "@maven//:org_apache_logging_log4j_log4j_core",
     ],
+    visibility = ["//examples/java:__subpackages__"],
 )

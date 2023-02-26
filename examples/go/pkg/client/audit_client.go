@@ -68,5 +68,5 @@ func NewAuditRecordResponseCallback(stream grpc.Audit_CreateClient) *AuditRecord
 
 type AuditClient struct {
 	grpc.AuditClient
-	handler AuditRecordResponseCallback
+	handler *AuditRecordResponseCallback
 }

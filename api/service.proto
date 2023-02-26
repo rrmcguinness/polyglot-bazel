@@ -11,11 +11,21 @@ import "google/api/annotations.proto";
 import "api/model.proto";
 
 service Audit {
-  rpc Create(stream example.pb.AuditRecord)
-    returns (stream example.pb.AuditResponse) {
+
+  // Use a bidirectional client/server contract allowing a persistent
+  // stream of events and responses for creating audit events.
+  rpc Create(stream example.pb.AuditRecord) returns (stream example.pb.AuditResponse) {
     option (google.api.http) = {
-      post: '/audit'
+      post: '/audit/c'
       body: 'audit_record'
     };
+  }
+
+  // Validate the original request was processed
+  rpc Verify(stream example.pb.AuditResponse) returns (stream example.pb.AuditVerificationResponse) {
+      option (google.api.http) = {
+        post: '/audit/v'
+        body: 'audit_response'
+      };
   }
 }

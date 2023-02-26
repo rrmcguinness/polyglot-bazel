@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "test",
+    srcs = [
+        "client_server_test.go",
+    ],
+    deps = [
+        "//examples/go:go_api",
+        "//examples/go:go_grpc",
+        "//examples/go/pkg/client",
+        "//examples/go/pkg/server",
+        "//examples/go/pkg/service",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

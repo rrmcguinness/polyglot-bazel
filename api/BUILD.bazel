@@ -14,26 +14,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = [
-    "//api:__subpackages__",
-    "//src:__subpackages__",
-])
-
+# Load the rules appropriate for the build file
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("//:build/go_deps.bzl", "COMMON_API_PROTOS")
 
+# Create the Protocol Buffer Library for the Model (Nouns)
 proto_library(
     name = "model",
     srcs = [
         "model.proto",
     ],
     deps = COMMON_API_PROTOS,
+    visibility = [
+        "//api:__subpackages__",
+        "//examples:__subpackages__",
+    ],
 )
 
+# Create the Protocol Buffer Library for the Services (Verbs)
 proto_library(
     name = "service",
     srcs = [
         "service.proto",
     ],
     deps = [":model"] + COMMON_API_PROTOS,
+    visibility = [
+        "//api:__subpackages__",
+        "//examples:__subpackages__",
+    ],
 )
