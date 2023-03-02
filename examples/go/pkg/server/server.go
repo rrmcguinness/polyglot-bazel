@@ -1,3 +1,5 @@
+// Package server is a default server for GRPC functions. Each GRPC service
+// must be registered in the "NewAuditServer" method.
 package server
 
 import (
@@ -5,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 
 	rpc "examples/go/grpc"
 	"examples/go/pkg/service"
@@ -20,6 +23,7 @@ var (
 	port     = flag.Int("port", 50080, "The server port")
 )
 
+// NewAuditServer is the creator method for the GRPC Server
 func NewAuditServer() (*AuditGRPCServer, error) {
 	out := &AuditGRPCServer{
 		opts:       make([]grpc.ServerOption, 0),
@@ -30,9 +34,10 @@ func NewAuditServer() (*AuditGRPCServer, error) {
 		Host:       *host,
 		Port:       int32(*port),
 		Log:        log.Default(),
+		quit:       make(chan bool),
 	}
 
-	out.PrepareGRPCOpts()
+	out.prepareGRPCOpts()
 	out.server = grpc.NewServer(out.opts...)
 
 	// Register all services with GRPC
@@ -41,23 +46,39 @@ func NewAuditServer() (*AuditGRPCServer, error) {
 	return out, nil
 }
 
+// AuditGRPCServer is the default server for audit functions.
 type AuditGRPCServer struct {
 	opts       []grpc.ServerOption
 	running    bool
 	tlsEnabled bool
+	quit       chan bool
 	certFile   string
 	keyFile    string
 	Host       string
 	Port       int32
+	mu         sync.Mutex
 	server     *grpc.Server
-	quit       chan bool
 	Log        *log.Logger
 }
 
+// Safely sets the server state for other observers
+func (srv *AuditGRPCServer) setRunning(val bool) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+	srv.running = val
+}
+
+// IsRunning is a convenience method for determining if the server is running.
+func (srv *AuditGRPCServer) IsRunning() bool {
+	return srv.running
+}
+
+// ConnectionString A convenience method for getting host and port.
 func (srv *AuditGRPCServer) ConnectionString() string {
 	return fmt.Sprintf("%s:%d", srv.Host, srv.Port)
 }
 
+// Handle errors gracefully
 func (srv *AuditGRPCServer) fatalErrorCheck(msg string, err error) bool {
 	if err != nil {
 		srv.Log.Fatalf(msg, err)
@@ -66,7 +87,8 @@ func (srv *AuditGRPCServer) fatalErrorCheck(msg string, err error) bool {
 	return true
 }
 
-func (srv *AuditGRPCServer) PrepareGRPCOpts() {
+// Sets up the credentials from the given cert and key files.
+func (srv *AuditGRPCServer) prepareGRPCOpts() {
 	if *tls {
 		if *certFile != "" && *keyFile != "" {
 			creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
@@ -79,15 +101,37 @@ func (srv *AuditGRPCServer) PrepareGRPCOpts() {
 	}
 }
 
-// Start starts the server listening on the registered port.
+func runServer(srv *AuditGRPCServer, lis net.Listener) {
+	// This will block until Close is called.
+	err := srv.server.Serve(lis)
+	if err != nil {
+		srv.fatalErrorCheck("failed to listen", err)
+		return
+	}
+	return
+}
+
+func stopServer(srv *AuditGRPCServer) {
+	srv.Log.Printf("stopping server: %s", srv.ConnectionString())
+	srv.server.GracefulStop()
+	srv.setRunning(false)
+}
+
+// Start starts the server in the background listening on the registered port.
 func (srv *AuditGRPCServer) Start() {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", srv.Host, srv.Port))
 	if ok := srv.fatalErrorCheck("failed to listen on port", err); ok {
 		go func() {
-			err = srv.server.Serve(lis)
-			if ok := srv.fatalErrorCheck("failed to listen", err); ok {
-				srv.running = true
-				log.Printf("server started: %v", srv.ConnectionString())
+			for {
+				select {
+				case <-srv.quit:
+					stopServer(srv)
+					return
+				default:
+					if !srv.running {
+						go runServer(srv, lis)
+					}
+				}
 			}
 		}()
 	}
@@ -95,6 +139,5 @@ func (srv *AuditGRPCServer) Start() {
 
 // Stop gracefully shuts down the server
 func (srv *AuditGRPCServer) Stop() {
-	log.Printf("stopping srv: %s", srv.ConnectionString())
-	srv.server.GracefulStop()
+	srv.quit <- true
 }
