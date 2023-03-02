@@ -16,8 +16,8 @@
 
 package example.service;
 
-import example.grpc.AuditGrpc;
-import example.pb.Model;
+import examples.java.grpc.AuditGrpc;
+import examples.java.pb.Model;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

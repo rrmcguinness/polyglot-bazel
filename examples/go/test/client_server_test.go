@@ -1,43 +1,31 @@
 package test
 
 import (
+	"context"
+	"log"
 	"testing"
 
-	grpc2 "example/grpc"
-	"example/pkg/server"
+	"examples/go/pb"
+	"examples/go/pkg/model"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-var srv server.AuditServer
-var clnt grpc2.AuditClient
-
-func startServer(t *testing.T) {
-	srv, err := server.NewAuditServer()
-	assert.NotNil(t, srv)
-	assert.Nil(t, err)
-}
-
-func stopServer(t *testing.T) {
-	srv.Stop()
-}
-
-func getClient(t *testing.T) {
-	var opts = make([]grpc.DialOption, 0)
-
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conn, err := grpc.Dial(srv.GetConnectionString(), opts...)
-	if err != nil {
-		stopServer(t)
-	}
-	clnt = grpc2.NewAuditClient(conn)
-}
-
 func TestClientServer(t *testing.T) {
-	startServer(t)
-	getClient(t)
-	assert.NotNil(t, clnt)
+	assert.NotNil(t, Client)
 
-	stopServer(t)
+	ctx := context.Background()
+
+	messages := make([]*pb.AuditRecord, 0)
+	for i := 1; i < 5; i++ {
+		baggage := make(map[string]string)
+		record := model.NewAuditRecord("test", "test_client", "SYSTEM", baggage)
+		messages = append(messages, record)
+	}
+	sent, err := Client.Create(ctx, nil, messages...)
+
+	assert.Equal(t, 4, len(sent))
+	if err != nil {
+		log.Fatalf("failed to close stream : %v\n", err)
+	}
+	log.Printf("Sent: %v\n", sent)
 }

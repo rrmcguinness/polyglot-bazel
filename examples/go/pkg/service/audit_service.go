@@ -18,36 +18,52 @@ package service
 
 import (
 	"io"
-	"log"
+	"sync"
 
-	"example/grpc"
-	"example/pb"
+	"examples/go/grpc"
+	"examples/go/pb"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func NewAuditService() *AuditService {
-	return &AuditService{
-		UnimplementedAuditServer: grpc.UnimplementedAuditServer{},
-		records:                  make(map[string]*pb.AuditRecord),
+func NewAuditService() *auditServer {
+	return &auditServer{
+		records: make(map[string]*pb.AuditRecord),
 	}
 }
 
-type AuditService struct {
+type auditServer struct {
 	grpc.UnimplementedAuditServer
+	mu      sync.Mutex
 	records map[string]*pb.AuditRecord
 }
 
-func (svc *AuditService) Create(stream grpc.Audit_CreateServer) (err error) {
+func (svr *auditServer) Verify(stream grpc.Audit_VerifyServer) error {
 	for {
-		audit, err := stream.Recv()
+		in, err := stream.Recv()
 		if err == io.EOF {
 			return io.EOF
 		}
 		if err != nil {
 			return err
 		}
-		log.Default().Printf("%v", audit)
+		received := svr.records[in.TransactionId]
+		if err := stream.Send(&pb.AuditVerificationResponse{Verified: received != nil}); err != nil {
+			return err
+		}
+	}
+}
+
+func (svr *auditServer) Create(stream grpc.Audit_CreateServer) error {
+	for {
+		audit, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		//log.Printf("%v", audit)
 
 		persist := pb.AuditRecord{
 			Id:               audit.Id,
@@ -73,14 +89,15 @@ func (svc *AuditService) Create(stream grpc.Audit_CreateServer) (err error) {
 		}
 
 		txId, _ := uuid.NewRandom()
-		svc.records[txId.String()] = audit
+		//svr.mu.Lock()
+		svr.records[txId.String()] = audit
+		//svr.mu.Unlock()
 
 		// Since this is an audit, respond with an ack containing the transaction id
 		// this may be used for accounting purposes such that a client send
-		// 100 audit events, and the service verified those events.
-		stream.Send(&pb.AuditResponse{
-			AuditRecordId: audit.Id,
-			TransactionId: txId.String(),
-		})
+		response := &pb.AuditResponse{
+			AuditRecordId: audit.Id, TransactionId: txId.String()}
+
+		stream.Send(response)
 	}
 }

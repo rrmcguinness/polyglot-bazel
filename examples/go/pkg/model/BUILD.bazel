@@ -1,18 +1,16 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "client",
+    name = "model",
     srcs = [
-        "audit_client.go",
+        "model.go",
     ],
-    importpath = "examples/go/pkg/client",
+    importpath = "examples/go/pkg/model",
     visibility = [
         "//examples/go:__subpackages__",
     ],
     deps = [
         "//examples/go:go_api",
-        "//examples/go:go_grpc",
-        "//examples/go/pkg/model",
         "@com_github_google_uuid//:uuid",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_protobuf//types/known/timestamppb",

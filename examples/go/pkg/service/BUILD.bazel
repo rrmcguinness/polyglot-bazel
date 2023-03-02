@@ -5,10 +5,10 @@ go_library(
     srcs = [
         "audit_service.go",
     ],
+    importpath = "examples/go/pkg/service",
     visibility = [
         "//examples/go:__subpackages__",
     ],
-    importpath = "example/pkg/service",
     deps = [
         "//examples/go:go_api",
         "//examples/go:go_grpc",

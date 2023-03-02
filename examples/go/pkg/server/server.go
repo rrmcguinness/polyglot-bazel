@@ -6,7 +6,8 @@ import (
 	"log"
 	"net"
 
-	"example/pkg/service"
+	rpc "examples/go/grpc"
+	"examples/go/pkg/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -16,11 +17,11 @@ var (
 	certFile = flag.String("cert_file", "", "The TLS cert file")
 	keyFile  = flag.String("key_file", "", "The TLS key file")
 	host     = flag.String("host", "localhost", "The host interface to listen on")
-	port     = flag.Int("port", 50051, "The server port")
+	port     = flag.Int("port", 50080, "The server port")
 )
 
-func NewAuditServer() (*AuditServer, error) {
-	server := &AuditServer{
+func NewAuditServer() (*AuditGRPCServer, error) {
+	out := &AuditGRPCServer{
 		opts:       make([]grpc.ServerOption, 0),
 		running:    false,
 		tlsEnabled: *tls,
@@ -28,45 +29,49 @@ func NewAuditServer() (*AuditServer, error) {
 		keyFile:    *keyFile,
 		Host:       *host,
 		Port:       int32(*port),
-		quit:       make(chan bool),
 		Log:        log.Default(),
 	}
 
-	return server, nil
+	out.PrepareGRPCOpts()
+	out.server = grpc.NewServer(out.opts...)
+
+	// Register all services with GRPC
+	rpc.RegisterAuditServer(out.server, service.NewAuditService())
+
+	return out, nil
 }
 
-type AuditServer struct {
-	opts         []grpc.ServerOption
-	running      bool
-	tlsEnabled   bool
-	certFile     string
-	keyFile      string
-	Host         string
-	Port         int32
-	server       *grpc.Server
-	quit         chan bool
-	auditService *service.AuditService
-	Log          *log.Logger
+type AuditGRPCServer struct {
+	opts       []grpc.ServerOption
+	running    bool
+	tlsEnabled bool
+	certFile   string
+	keyFile    string
+	Host       string
+	Port       int32
+	server     *grpc.Server
+	quit       chan bool
+	Log        *log.Logger
 }
 
-func (server *AuditServer) GetConnectionString() string {
-	return server.Host + ":" + string(server.Port)
+func (srv *AuditGRPCServer) ConnectionString() string {
+	return fmt.Sprintf("%s:%d", srv.Host, srv.Port)
 }
 
-func (server *AuditServer) fatalErrorCheck(msg string, err error) bool {
+func (srv *AuditGRPCServer) fatalErrorCheck(msg string, err error) bool {
 	if err != nil {
-		server.Log.Fatalf(msg, err)
+		srv.Log.Fatalf(msg, err)
 		return false
 	}
 	return true
 }
 
-func (server *AuditServer) PrepareGRPCOpts() {
+func (srv *AuditGRPCServer) PrepareGRPCOpts() {
 	if *tls {
 		if *certFile != "" && *keyFile != "" {
 			creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-			if ok := server.fatalErrorCheck("failed to generate credentials", err); ok {
-				server.opts = append(server.opts, grpc.Creds(creds))
+			if ok := srv.fatalErrorCheck("failed to generate credentials", err); ok {
+				srv.opts = append(srv.opts, grpc.Creds(creds))
 			}
 		} else {
 			// Anonymous credentials
@@ -75,29 +80,21 @@ func (server *AuditServer) PrepareGRPCOpts() {
 }
 
 // Start starts the server listening on the registered port.
-func (server *AuditServer) Start() {
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", server.Host, server.Port))
-	if ok := server.fatalErrorCheck("failed to listen on port", err); ok {
+func (srv *AuditGRPCServer) Start() {
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", srv.Host, srv.Port))
+	if ok := srv.fatalErrorCheck("failed to listen on port", err); ok {
 		go func() {
-			for {
-				select {
-				case <-server.quit:
-					log.Printf("Stopping Server: %s:%d", server.Host, server.Port)
-					server.server.GracefulStop()
-					server.running = false
-					return
-				default:
-					err = server.server.Serve(lis)
-					if ok := server.fatalErrorCheck("failed to listen", err); ok {
-						server.running = true
-					}
-				}
+			err = srv.server.Serve(lis)
+			if ok := srv.fatalErrorCheck("failed to listen", err); ok {
+				srv.running = true
+				log.Printf("server started: %v", srv.ConnectionString())
 			}
 		}()
 	}
 }
 
 // Stop gracefully shuts down the server
-func (server *AuditServer) Stop() {
-	server.quit <- true
+func (srv *AuditGRPCServer) Stop() {
+	log.Printf("stopping srv: %s", srv.ConnectionString())
+	srv.server.GracefulStop()
 }

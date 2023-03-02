@@ -2,25 +2,24 @@
 load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library", "java_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_grpc_compile")
 
-
 java_proto_library(
     name = "java_proto",
-    importpath = "example.pb",
+    importpath = "examples.java.pb",
     protos = [
         "//api:model",
     ],
     visibility = [
         "//examples/java:__subpackages__",
-    ]
+    ],
 )
 
 java_grpc_library(
     name = "java_grpc",
-    importpath = "example.grpc",
+    importpath = "examples.java.grpc",
     protos = ["//api:service"],
+    visibility = ["//examples/java:__subpackages__"],
     deps = [
         ":java_proto",
         "@maven//:com_google_api_grpc_proto_google_common_protos",
     ],
-    visibility = ["//examples/java:__subpackages__", ]
 )

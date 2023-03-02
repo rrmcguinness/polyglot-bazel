@@ -4,13 +4,18 @@ go_test(
     name = "test",
     srcs = [
         "client_server_test.go",
+        "test_setup.go",
     ],
     deps = [
         "//examples/go:go_api",
         "//examples/go:go_grpc",
         "//examples/go/pkg/client",
+        "//examples/go/pkg/model",
         "//examples/go/pkg/server",
         "//examples/go/pkg/service",
         "@com_github_stretchr_testify//assert",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials:go_default_library",
+        "@org_golang_google_grpc//credentials/insecure:go_default_library",
     ],
 )

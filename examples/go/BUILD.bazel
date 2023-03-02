@@ -4,9 +4,10 @@ load("//:build/go_deps.bzl", "COMMON_API_PROTOS", "WELL_KNOWN_TYPES")
 """
 Targets for creating the Go implementation of the Model and gRPC libraries
 """
+
 go_proto_library(
     name = "go_api",
-    importpath = "example/pb",
+    importpath = "examples/go/pb",
     proto = "//api:model",
     visibility = [
         "//examples/go:__subpackages__",
@@ -15,15 +16,15 @@ go_proto_library(
 
 go_grpc_library(
     name = "go_grpc",
-    importpath = "example/grpc",
+    importpath = "examples/go/grpc",
     protos = [
         "//api:service",
+    ],
+    visibility = [
+        "//examples/go:__subpackages__",
     ],
     deps = [
         ":go_api",
         "@go_googleapis//google/api:annotations_go_proto",
     ] + WELL_KNOWN_TYPES,
-    visibility = [
-        "//examples/go:__subpackages__",
-    ],
 )

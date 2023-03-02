@@ -14,59 +14,100 @@
  * limitations under the License.
  */
 
+// Package client simplifies the construction and use of the gRPC AuditClient.
+// intended to supply hold the client state and manage the connections.
 package client
 
 import (
+	"context"
 	"io"
 	"log"
 
-	"example/grpc"
-	"example/pb"
+	rpc "examples/go/grpc"
+	"examples/go/pb"
+	"google.golang.org/grpc"
 )
 
-type Callable interface {
-	Callable()
-	GetWaitChannel() chan struct{}
-	GetCommChannel() chan *pb.AuditResponse
-}
-
-type AuditRecordResponseCallback struct {
-	waitc  chan struct{}
-	stream grpc.Audit_CreateClient
-	comm   chan *pb.AuditResponse
-}
-
-func (audit AuditRecordResponseCallback) GetCommChannel() chan *pb.AuditResponse {
-	return audit.comm
-}
-
-func (audit AuditRecordResponseCallback) GetWaitChannel() chan struct{} {
-	return audit.waitc
-}
-
-func (audit AuditRecordResponseCallback) Callback() {
-	for {
-		in, err := audit.stream.Recv()
-		if err == io.EOF {
-			close(audit.waitc)
-			return
-		}
-		if err != nil {
-			log.Default().Printf("error while receiving: %v", err)
-		}
-		audit.comm <- in
-	}
-}
-
-func NewAuditRecordResponseCallback(stream grpc.Audit_CreateClient) *AuditRecordResponseCallback {
-	return &AuditRecordResponseCallback{
-		waitc:  make(chan struct{}),
-		stream: stream,
-		comm:   make(chan *pb.AuditResponse),
-	}
-}
-
 type AuditClient struct {
-	grpc.AuditClient
-	handler *AuditRecordResponseCallback
+	auditClient rpc.AuditClient
+}
+
+func NewAuditClient(conn *grpc.ClientConn) (*AuditClient, error) {
+	out := &AuditClient{
+		auditClient: rpc.NewAuditClient(conn),
+	}
+	return out, nil
+}
+
+func verifyCallOptions(callOptions []grpc.CallOption) []grpc.CallOption {
+	if callOptions == nil {
+		return make([]grpc.CallOption, 0)
+	}
+	return callOptions
+}
+
+func (a *AuditClient) AuditCreateClient(
+	ctx context.Context,
+	callOptions []grpc.CallOption) (rpc.Audit_CreateClient, error) {
+	callOptions = verifyCallOptions(callOptions)
+	return a.auditClient.Create(ctx, callOptions...)
+}
+
+func (a *AuditClient) Create(
+	ctx context.Context,
+	callOptions []grpc.CallOption,
+	messages ...*pb.AuditRecord) ([]*pb.AuditResponse, error) {
+
+	out := make([]*pb.AuditResponse, 0)
+
+	callOptions = verifyCallOptions(callOptions)
+	createClient, err := a.AuditCreateClient(ctx, callOptions)
+
+	waitc := make(chan struct{})
+	go func() {
+		for {
+			m, e := createClient.Recv()
+			if e == io.EOF {
+				close(waitc)
+				break
+			}
+			if e != nil {
+				close(waitc)
+				log.Fatalf("failed reading the client: %v\n", e)
+			}
+			out = append(out, m)
+		}
+	}()
+
+	if err != nil {
+		return out, err
+	}
+
+	for _, out := range messages {
+		if err = createClient.Send(out); err != nil {
+			return nil, err
+		}
+	}
+	err = createClient.CloseSend()
+	<-waitc
+	return out, err
+}
+
+func (a *AuditClient) Verify(
+	ctx context.Context,
+	callOptions []grpc.CallOption,
+	responses ...*pb.AuditResponse) error {
+
+	callOptions = verifyCallOptions(callOptions)
+	verifyClient, err := a.auditClient.Verify(ctx, callOptions...)
+	if err != nil {
+		return err
+	}
+	for _, response := range responses {
+		if err = verifyClient.Send(response); err != nil {
+			return err
+		}
+	}
+	verifyClient.CloseSend()
+	return nil
 }

@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package example.grpc;
 
-option go_package = "example/grpc";
+option go_package = "examples/go/grpc";
 
-option java_package = "example.grpc";
+option java_package = "examples.java.grpc";
 
 import "google/api/annotations.proto";
 

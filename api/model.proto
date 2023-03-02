@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package example.pb;
 
-option go_package = "example/pb";
+option go_package = "examples/go/pb";
 
-option java_package = "example.pb";
+option java_package = "examples.java.pb";
 
 import "google/protobuf/timestamp.proto";
 
