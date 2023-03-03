@@ -71,3 +71,9 @@ buildNumber.properties
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
+# Teffaform
+plan.tf
+*.hcl
+*.tfstate
+*.tfstate.backup
+
