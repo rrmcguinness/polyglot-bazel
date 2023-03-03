@@ -89,9 +89,9 @@ func (svr *auditServer) Create(stream grpc.Audit_CreateServer) error {
 		}
 
 		txId, _ := uuid.NewRandom()
-		//svr.mu.Lock()
+		svr.mu.Lock()
 		svr.records[txId.String()] = audit
-		//svr.mu.Unlock()
+		svr.mu.Unlock()
 
 		// Since this is an audit, respond with an ack containing the transaction id
 		// this may be used for accounting purposes such that a client send

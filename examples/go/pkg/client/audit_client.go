@@ -25,6 +25,7 @@ import (
 
 	rpc "examples/go/grpc"
 	"examples/go/pb"
+	"github.com/cenkalti/backoff/v4"
 	"google.golang.org/grpc"
 )
 
@@ -32,6 +33,7 @@ type AuditClient struct {
 	auditClient rpc.AuditClient
 }
 
+// NewAuditClient creates an audit client with default properties.
 func NewAuditClient(conn *grpc.ClientConn) (*AuditClient, error) {
 	out := &AuditClient{
 		auditClient: rpc.NewAuditClient(conn),
@@ -39,6 +41,8 @@ func NewAuditClient(conn *grpc.ClientConn) (*AuditClient, error) {
 	return out, nil
 }
 
+// Ensures that the call options are not nil, and if they are returns
+// an empty array.
 func verifyCallOptions(callOptions []grpc.CallOption) []grpc.CallOption {
 	if callOptions == nil {
 		return make([]grpc.CallOption, 0)
@@ -46,6 +50,7 @@ func verifyCallOptions(callOptions []grpc.CallOption) []grpc.CallOption {
 	return callOptions
 }
 
+// AuditCreateClient exposes access to the audit create client.
 func (a *AuditClient) AuditCreateClient(
 	ctx context.Context,
 	callOptions []grpc.CallOption) (rpc.Audit_CreateClient, error) {
@@ -53,16 +58,8 @@ func (a *AuditClient) AuditCreateClient(
 	return a.auditClient.Create(ctx, callOptions...)
 }
 
-func (a *AuditClient) Create(
-	ctx context.Context,
-	callOptions []grpc.CallOption,
-	messages ...*pb.AuditRecord) ([]*pb.AuditResponse, error) {
-
+func Collect(createClient rpc.Audit_CreateClient) []*pb.AuditResponse {
 	out := make([]*pb.AuditResponse, 0)
-
-	callOptions = verifyCallOptions(callOptions)
-	createClient, err := a.AuditCreateClient(ctx, callOptions)
-
 	waitc := make(chan struct{})
 	go func() {
 		for {
@@ -78,18 +75,33 @@ func (a *AuditClient) Create(
 			out = append(out, m)
 		}
 	}()
+	<-waitc
+	return out
+}
 
-	if err != nil {
-		return out, err
-	}
+// Create adds one or more Audit Records to service and backing store.
+func (a *AuditClient) Create(
+	ctx context.Context,
+	callOptions []grpc.CallOption,
+	messages ...*pb.AuditRecord) ([]*pb.AuditResponse, error) {
+
+	callOptions = verifyCallOptions(callOptions)
+	createClient, err := a.AuditCreateClient(ctx, callOptions)
 
 	for _, out := range messages {
-		if err = createClient.Send(out); err != nil {
-			return nil, err
+		operation := func() (*pb.AuditRecord, error) {
+			if err = createClient.Send(out); err != nil {
+				return out, err
+			}
+			return out, nil
+		}
+		r, err := backoff.RetryWithData(operation, backoff.NewExponentialBackOff())
+		if err != nil {
+			log.Printf("failed to write record: %v with error: %v", r, err)
 		}
 	}
 	err = createClient.CloseSend()
-	<-waitc
+	out := Collect(createClient)
 	return out, err
 }
 
@@ -98,16 +110,23 @@ func (a *AuditClient) Verify(
 	callOptions []grpc.CallOption,
 	responses ...*pb.AuditResponse) error {
 
-	callOptions = verifyCallOptions(callOptions)
-	verifyClient, err := a.auditClient.Verify(ctx, callOptions...)
+	verifyClient, err := a.auditClient.Verify(ctx, verifyCallOptions(callOptions)...)
 	if err != nil {
 		return err
 	}
+
 	for _, response := range responses {
-		if err = verifyClient.Send(response); err != nil {
-			return err
+		operation := func() (*pb.AuditResponse, error) {
+			if err = verifyClient.Send(response); err != nil {
+				return response, err
+			}
+			return response, nil
+		}
+		err, r := backoff.RetryWithData(operation, backoff.NewExponentialBackOff())
+		if err != nil {
+			log.Printf("failed to get response: %v", r)
+			// TODO - Add additional code here to fail over to a file for replay.
 		}
 	}
-	verifyClient.CloseSend()
-	return nil
+	return verifyClient.CloseSend()
 }

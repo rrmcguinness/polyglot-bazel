@@ -15,6 +15,7 @@ go_library(
         "//examples/go/pkg/service",
         "@com_google_cloud_go//:go_default_library",
         "@com_google_cloud_go_bigquery//:bigquery",
+        "@org_golang_google_api//iterator:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials:go_default_library",
         "@org_golang_google_protobuf//types/known/emptypb",
