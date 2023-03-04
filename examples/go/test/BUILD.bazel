@@ -2,6 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 go_test(
     name = "test",
+    size = "small",
     srcs = [
         "client_server_test.go",
         "test_setup.go",
