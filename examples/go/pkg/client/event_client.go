@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package client simplifies the construction and use of the gRPC AuditClient.
+// Package client simplifies the construction and use of the gRPC EventClient.
 // intended to supply hold the client state and manage the connections.
 package client
 
@@ -29,16 +29,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-type AuditClient struct {
-	auditClient rpc.AuditClient
+type EventClient struct {
+	eventClient rpc.EventsClient
 }
 
-// NewAuditClient creates an audit client with default properties.
-func NewAuditClient(conn *grpc.ClientConn) (*AuditClient, error) {
-	out := &AuditClient{
-		auditClient: rpc.NewAuditClient(conn),
+// NewEventClient creates an audit client with default properties.
+func NewEventClient(conn *grpc.ClientConn) *EventClient {
+	out := &EventClient{
+		eventClient: rpc.NewEventsClient(conn),
 	}
-	return out, nil
+	return out
 }
 
 // Ensures that the call options are not nil, and if they are returns
@@ -50,16 +50,8 @@ func verifyCallOptions(callOptions []grpc.CallOption) []grpc.CallOption {
 	return callOptions
 }
 
-// AuditCreateClient exposes access to the audit create client.
-func (a *AuditClient) AuditCreateClient(
-	ctx context.Context,
-	callOptions []grpc.CallOption) (rpc.Audit_CreateClient, error) {
-	callOptions = verifyCallOptions(callOptions)
-	return a.auditClient.Create(ctx, callOptions...)
-}
-
-func Collect(createClient rpc.Audit_CreateClient) []*pb.AuditResponse {
-	out := make([]*pb.AuditResponse, 0)
+func collect(createClient rpc.Events_PutClient) []*pb.EventResponse {
+	out := make([]*pb.EventResponse, 0)
 	waitc := make(chan struct{})
 	go func() {
 		for {
@@ -79,17 +71,16 @@ func Collect(createClient rpc.Audit_CreateClient) []*pb.AuditResponse {
 	return out
 }
 
-// Create adds one or more Audit Records to service and backing store.
-func (a *AuditClient) Create(
+// Put adds one or more Event Records to service and backing store.
+func (a *EventClient) Put(
 	ctx context.Context,
 	callOptions []grpc.CallOption,
-	messages ...*pb.AuditRecord) ([]*pb.AuditResponse, error) {
+	messages ...*pb.Event) ([]*pb.EventResponse, error) {
 
-	callOptions = verifyCallOptions(callOptions)
-	createClient, err := a.AuditCreateClient(ctx, callOptions)
+	createClient, err := a.eventClient.Put(ctx, verifyCallOptions(callOptions)...)
 
 	for _, out := range messages {
-		operation := func() (*pb.AuditRecord, error) {
+		operation := func() (*pb.Event, error) {
 			if err = createClient.Send(out); err != nil {
 				return out, err
 			}
@@ -101,22 +92,22 @@ func (a *AuditClient) Create(
 		}
 	}
 	err = createClient.CloseSend()
-	out := Collect(createClient)
+	out := collect(createClient)
 	return out, err
 }
 
-func (a *AuditClient) Verify(
+func (a *EventClient) Verify(
 	ctx context.Context,
 	callOptions []grpc.CallOption,
-	responses ...*pb.AuditResponse) error {
+	responses ...*pb.EventResponse) error {
 
-	verifyClient, err := a.auditClient.Verify(ctx, verifyCallOptions(callOptions)...)
+	verifyClient, err := a.eventClient.Verify(ctx, verifyCallOptions(callOptions)...)
 	if err != nil {
 		return err
 	}
 
 	for _, response := range responses {
-		operation := func() (*pb.AuditResponse, error) {
+		operation := func() (*pb.EventResponse, error) {
 			if err = verifyClient.Send(response); err != nil {
 				return response, err
 			}
@@ -125,8 +116,33 @@ func (a *AuditClient) Verify(
 		err, r := backoff.RetryWithData(operation, backoff.NewExponentialBackOff())
 		if err != nil {
 			log.Printf("failed to get response: %v", r)
-			// TODO - Add additional code here to fail over to a file for replay.
 		}
 	}
 	return verifyClient.CloseSend()
+}
+
+func (a *EventClient) FindByDateRange(
+	ctx context.Context,
+	opts []grpc.CallOption,
+	in *pb.DateRangeRequest) ([]*pb.EventRecord, error) {
+
+	resp, err := a.eventClient.FindByDateRange(ctx, in, verifyCallOptions(opts)...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*pb.EventRecord, 0)
+
+	for {
+		r, err := resp.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, nil
 }

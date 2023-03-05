@@ -11,13 +11,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var Server *server.AuditGRPCServer
-var Client *client.AuditClient
+var Server *server.EventsGRPCServer
+var Client *client.EventClient
 var conn *grpc.ClientConn
 
 func serverSetup() {
 	var err error
-	Server, err = server.NewAuditServer()
+	Server, err = server.NewEventsServer()
 	if err != nil {
 		log.Fatalf("failed to start server %v", err)
 	}
@@ -33,10 +33,7 @@ func clientSetup() {
 		log.Fatalf("failed to create client connection: %v", err)
 	}
 
-	Client, err = client.NewAuditClient(conn)
-	if err != nil {
-		log.Fatalf("failed to create audit client: %v", err)
-	}
+	Client = client.NewEventClient(conn)
 }
 
 func tearDown() {

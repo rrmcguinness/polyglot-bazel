@@ -7,13 +7,13 @@ provider "google" {
 # modules
 module "dataset" {
   source = "./dataset"
-  audit_DS_location = var.audit_DS_location
-  audit = var.audit
+  event_DS_location = var.event_DS_location
+  event = var.event
 
 }
 
 module "table" {
   source = "./table"
-  audit = module.dataset.audit_dataset_id
-  tbl_audit = var.tbl_audit
+  event = module.dataset.event_dataset_id
+  tbl_event = var.tbl_event
 }

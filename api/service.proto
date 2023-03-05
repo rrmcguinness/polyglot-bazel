@@ -10,22 +10,35 @@ import "google/api/annotations.proto";
 
 import "api/model.proto";
 
-service Audit {
+service Events {
+  rpc Get(example.pb.IdRequest) returns (example.pb.EventRecord) {
+    option (google.api.http) = {
+      put: '/events?id={id}'
+      body: 'event'
+    };
+  }
 
   // Use a bidirectional client/server contract allowing a persistent
   // stream of events and responses for creating audit events.
-  rpc Create(stream example.pb.AuditRecord) returns (stream example.pb.AuditResponse) {
+  rpc Put(stream example.pb.Event) returns (stream example.pb.EventResponse) {
     option (google.api.http) = {
-      post: '/audit/c'
-      body: 'audit_record'
+      put: '/events'
+      body: 'event'
     };
   }
 
   // Validate the original request was processed
-  rpc Verify(stream example.pb.AuditResponse) returns (stream example.pb.AuditVerificationResponse) {
+  rpc Verify(stream example.pb.EventResponse) returns (stream example.pb.EventVerifyResponse) {
       option (google.api.http) = {
-        post: '/audit/v'
-        body: 'audit_response'
+        post: '/events/verify'
+        body: 'event_verify_response'
       };
+  }
+
+  rpc FindByDateRange(example.pb.DateRangeRequest) returns (stream example.pb.EventRecord) {
+    option (google.api.http) = {
+      post: '/event/list'
+      body: 'event_verify_response'
+    };
   }
 }

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "client",
     srcs = [
-        "audit_client.go",
+        "event_client.go",
     ],
     importpath = "examples/go/pkg/client",
     visibility = [

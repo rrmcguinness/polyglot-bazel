@@ -3,7 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "service",
     srcs = [
-        "audit_service.go",
+        "bq_delegate.go",
+        "event_service.go",
     ],
     importpath = "examples/go/pkg/service",
     visibility = [
@@ -12,6 +13,7 @@ go_library(
     deps = [
         "//examples/go:go_api",
         "//examples/go:go_grpc",
+        "//examples/go/pkg/model",
         "@com_github_google_uuid//:uuid",
         "@com_google_cloud_go//:go_default_library",
         "@com_google_cloud_go_bigquery//:bigquery",

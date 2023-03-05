@@ -4,8 +4,8 @@ variable "zone" {}
 
 variable "project_id" {}
 
-variable "tbl_audit" {}
+variable "tbl_event" {}
 
-variable "audit" {}
+variable "event" {}
 
-variable "audit_DS_location" {}
+variable "event_DS_location" {}

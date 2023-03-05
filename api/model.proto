@@ -9,13 +9,13 @@ option java_package = "examples.java.pb";
 import "google/protobuf/timestamp.proto";
 
 // A record for recording an auditable event.
-message AuditRecord {
+message Event {
   // A client generated UUID for the unique event
   string id = 1 [json_name = 'id'];
   // The date the version was created
   google.protobuf.Timestamp created = 2 [json_name = 'cr_dt'];
   // The type of action that was executed, example: CREATE, READ, UPDATE, DELETE
-  string action = 3 [json_name = 'action'];
+  string action = 3 [json_name = 'act'];
   // The context of the action, <RECORD_TYPE>, <SERVICE_CALL_TYPE>,
   string context = 4 [json_name = 'ctx'];
   // The executor of the action, LDAP ID, Token ID, etc.
@@ -23,19 +23,35 @@ message AuditRecord {
   // The origin of the action, request host, system_id, etc.
   map<string, string> context_variables = 6 [json_name = 'ctx_vars'];
 }
+message EventRecord {
+  string tx_id = 1 [json_name = "tx_id"];
+  google.protobuf.Timestamp observed = 2 [json_name = "observed"];
+  repeated Event events = 3 [json_name = "events"];
+}
 
 // An acknowledgement for the client event with a transaction id.
 // In practice, an audit should record every send event on a time period basis,
 // and provide the means to verify the transaction from the service side.
 // This allows a client to replay a log if the matching transactions DO NOT exist.
-message AuditResponse {
-  // The client created ID
-  string audit_record_id = 1 [json_name = 'id'];
+message EventResponse {
   // The service side ACK / transaction id
-  string transaction_id = 2 [json_name = 'tx_id'];
+  string transaction_id = 1 [json_name = 'tx_id'];
+  // The client created ID
+  string audit_record_id = 2 [json_name = 'id'];
+  // The date the version was created
+  google.protobuf.Timestamp received = 3 [json_name = 'rc_dt'];
 }
 
-message AuditVerificationResponse {
+message EventVerifyResponse {
   bool verified = 1 [json_name = 'verified'];
 }
 
+message IdRequest {
+  string id = 1 [json_name = 'id'];
+}
+
+message DateRangeRequest {
+  string request_id = 1 [json_name = 'req_id'];
+  google.protobuf.Timestamp start = 2 [json_name = 'st_dt'];
+  google.protobuf.Timestamp end = 3 [json_name = 'nd_dt'];
+}

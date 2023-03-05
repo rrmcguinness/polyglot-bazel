@@ -1,3 +1,3 @@
-variable "tbl_audit" {}
+variable "tbl_event" {}
 
-variable "audit" {}
+variable "event" {}

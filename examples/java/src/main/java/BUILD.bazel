@@ -2,8 +2,8 @@ java_binary(
     name = "service",
     srcs = glob([
         "example/client/*.java",
-        "example/service/*.java",
     ]),
+    visibility = ["//examples/java:__subpackages__"],
     deps = [
         "//examples/java:java_grpc",
         "//examples/java:java_proto",
@@ -11,5 +11,4 @@ java_binary(
         "@maven//:org_apache_logging_log4j_log4j_api",
         "@maven//:org_apache_logging_log4j_log4j_core",
     ],
-    visibility = ["//examples/java:__subpackages__"],
 )

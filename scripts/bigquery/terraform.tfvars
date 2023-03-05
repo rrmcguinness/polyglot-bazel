@@ -7,8 +7,8 @@ region = "us-central1" #BigQuery region
 zone = "us-central1"  # Bigquery zone
 
 # Datasource and table name
-tbl_audit = "tbl_audit"
-audit = "ds_audit"
+tbl_event = "tbl_event"
+event = "ds_events"
 
 # Ensure the DS Location matches a location for your needs.
-audit_DS_location = "US"
+event_DS_location = "US"

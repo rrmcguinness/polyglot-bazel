@@ -1,7 +1,7 @@
 # notebook table
-resource "google_bigquery_table" "tbl_audit" {
-  dataset_id = var.audit
-  table_id = var.tbl_audit
+resource "google_bigquery_table" "tbl_event" {
+  dataset_id = var.event
+  table_id = var.tbl_event
 
   time_partitioning {
     type = "DAY"
@@ -9,52 +9,72 @@ resource "google_bigquery_table" "tbl_audit" {
   schema = <<EOF
 [
   {
-    "name": "id",
+    "name": "tx_id",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "System generated identifier"
+    "description": "transaction identifier"
   },
   {
-    "name": "created",
+    "name": "observed",
     "type": "TIMESTAMP",
     "mode": "REQUIRED",
-    "description": "The time the action occured"
+    "description": "The time the action observed"
   },
   {
-    "name": "action",
-    "type": "STRING",
-    "mode": "REQUIRED",
-    "description": "The action that was executed."
-  },
-  {
-    "name": "context",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "Additional context values"
-  },
-  {
-    "name": "principal",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "Additional context values"
-  },
-  {
-    "name": "context_variables",
+    "name": "events",
     "type": "RECORD",
     "mode": "REPEATED",
-    "description": "Additional context variables",
+    "description": "events associated to the transaction",
     "fields": [
       {
-        "name": "k",
+        "name": "id",
         "type": "STRING",
         "mode": "REQUIRED",
-        "description": "Key"
+        "description": "System generated identifier"
       },
       {
-        "name": "v",
+        "name": "created",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The time the action occured"
+      },
+      {
+        "name": "action",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "The action that was executed."
+      },
+      {
+        "name": "context",
         "type": "STRING",
         "mode": "NULLABLE",
-        "description": "Value"
+        "description": "Additional context values"
+      },
+      {
+        "name": "principal",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "Additional context values"
+      },
+      {
+        "name": "context_variables",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "description": "Additional context variables",
+        "fields": [
+          {
+            "name": "k",
+            "type": "STRING",
+            "mode": "REQUIRED",
+            "description": "Key"
+          },
+          {
+            "name": "v",
+            "type": "STRING",
+            "mode": "NULLABLE",
+            "description": "Value"
+          }
+        ]
       }
     ]
   }
