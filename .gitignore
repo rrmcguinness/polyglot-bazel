@@ -76,4 +76,5 @@ plan.tf
 *.hcl
 *.tfstate
 *.tfstate.backup
+.terraform
 
